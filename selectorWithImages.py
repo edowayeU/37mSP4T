@@ -1,5 +1,4 @@
 from urllib.request import urlopen
-from urllib.error import URLError
 import tkinter as tk
 from tkinter import messagebox
 import datetime
@@ -16,17 +15,15 @@ class loadGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Reciever Selector")
-        self.root.geometry("800x1600")
-        self.how = 1
-        self.how2 = 1
+        self.root.geometry("800x1000")
+        self.running = True
+        self.onlineA = True
+        self.onlineB = True
+
+        self.root.protocol("WM_DELETE_WINDOW",self.onClose)
 
         size =300
 
-    
-
-        #self.label = tk.Label(self.root, text=f"Current Reciever: K-Band", font=('Arial',18))
-        #self.label.pack()
-        #when switch is connected change that line to this:
 
         self.titleA = tk.Label(self.root, text="Switch A", font=("Arial", 24, "bold"))
         self.titleA.pack()
@@ -50,7 +47,7 @@ class loadGUI:
         self.noImage = ImageTk.PhotoImage(self.noImage)
 
         self.panel = Label(self.root, image = self.unselectedImage)
-        self.panel.pack(fill = "x", expand = "yes" ,pady= 20)
+        self.panel.pack(fill = "x", pady= 25)
         
 
 
@@ -61,13 +58,13 @@ class loadGUI:
         recieverFrame.columnconfigure(2,weight=1)
 
         self.WButton = tk.Button(recieverFrame, text = "W-Band", font=('Arial',16), command=lambda: self.selectW("A"))
-        self.WButton.grid(row=0,column=0, padx=20, pady=20)
+        self.WButton.grid(row=0,column=0, padx=20, pady=5)
 
         self.QButton = tk.Button(recieverFrame, text = "Q-Band", font=('Arial',16), command=lambda: self.selectQ("A"))
-        self.QButton.grid(row=0,column=1, padx=20, pady=20)
+        self.QButton.grid(row=0,column=1, padx=20, pady=5)
 
         self.KButton = tk.Button(recieverFrame, text = "K-Band", font=('Arial',16), command=lambda: self.selectK("A"))
-        self.KButton.grid(row=0,column=2, padx=20, pady=20)
+        self.KButton.grid(row=0,column=2, padx=20, pady=5)
 
         self.orig_color = self.KButton.cget("background")
         
@@ -87,7 +84,7 @@ class loadGUI:
         self.label2.pack()
 
         self.panel2 = Label(self.root, image = self.unselectedImage)
-        self.panel2.pack(fill = "x", expand = "yes" ,pady= 20)
+        self.panel2.pack(fill = "x",pady= 25)
 
         recieverFrame2 = tk.Frame(self.root)
         recieverFrame2.columnconfigure(0,weight=1)
@@ -95,13 +92,13 @@ class loadGUI:
         recieverFrame2.columnconfigure(2,weight=1)
 
         self.WButton2 = tk.Button(recieverFrame2, text = "W-Band", font=('Arial',16), command=lambda: self.selectW("B"))
-        self.WButton2.grid(row=0,column=0, padx=20, pady=20)
+        self.WButton2.grid(row=0,column=0, padx=20, pady=5)
 
         self.QButton2 = tk.Button(recieverFrame2, text = "Q-Band", font=('Arial',16), command=lambda: self.selectQ("B"))
-        self.QButton2.grid(row=0,column=1, padx=20, pady=20)
+        self.QButton2.grid(row=0,column=1, padx=20, pady=5)
 
         self.KButton2 = tk.Button(recieverFrame2, text = "K-Band", font=('Arial',16), command=lambda: self.selectK("B"))
-        self.KButton2.grid(row=0,column=2, padx=20, pady=20)
+        self.KButton2.grid(row=0,column=2, padx=20, pady=5)
 
         recieverFrame2.pack()
 
@@ -117,10 +114,14 @@ class loadGUI:
         self.label2.config(text=f"Current Reciever: {currentStateB}", font=('Arial',18))
         self.label2.pack()
 
-        threading.Thread(target=self.constantCheck).start()
+        self.root.after(1000, self.constantCheck)
 
 
         self.root.mainloop()
+
+    def onClose(self):
+        self.running = False
+        self.root.destroy()
 
     def disconnect(self,switch):
         if messagebox.askyesno(title="Disconnect", message="Do you want to disconnect the reciever?"):
@@ -146,17 +147,11 @@ class loadGUI:
                 self.KButton2.config(bg=self.orig_color) 
         
     def constantCheck(self):
-        waiting4Input = True
-        while waiting4Input:
-            time.sleep(1)
-            try:
-                self.root.after(0,self.getState,"A")
-            except Exception as e:
-                print(e)
-            try:
-                self.root.after(0,self.getState,"B")
-            except Exception as e:
-                print(e)
+        if not self.running or not self.root.winfo_exists():
+            return
+        self.getState("A")
+        self.getState("B")
+        self.root.after(1000,self.constantCheck)
 
     def getState(self, switch):
         try:
@@ -166,6 +161,11 @@ class loadGUI:
                 cmd = "SP4TB:STATE?"
             currentState = self.Get_HTTP_command(cmd).decode()
 
+            if switch == "A":
+                self.onlineA = True
+            else: 
+                self.onlineB = True
+
             if currentState == '1':
                 currentState = "W Band"
                 if switch == "A":
@@ -174,14 +174,14 @@ class loadGUI:
                     self.KButton.config(bg=self.orig_color) 
                     self.panel.config(image=self.WImage)
                     self.label.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
-                    self.how = 2
+                    
                 elif switch == "B":
                     self.WButton2.config(bg='green')
                     self.QButton2.config(bg=self.orig_color)
                     self.KButton2.config(bg=self.orig_color) 
                     self.panel2.config(image=self.WImage) 
                     self.label2.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
-                    self.how2 = 2
+                    
             elif currentState == '2':
                 currentState = "Q Band"
                 if switch == "A":
@@ -190,14 +190,14 @@ class loadGUI:
                     self.KButton.config(bg=self.orig_color) 
                     self.panel.config(image=self.QImage) 
                     self.label.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
-                    self.how = 2
+                    
                 elif switch == "B":
                     self.QButton2.config(bg='green')
                     self.WButton2.config(bg=self.orig_color)
                     self.KButton2.config(bg=self.orig_color) 
                     self.panel2.config(image=self.QImage) 
                     self.label2.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
-                    self.how2 = 2
+                    
             elif currentState == '3':
                 currentState = "K Band"
                 if switch == "A":
@@ -206,14 +206,14 @@ class loadGUI:
                     self.QButton.config(bg=self.orig_color) 
                     self.panel.config(image=self.KImage) 
                     self.label.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
-                    self.how = 2
+                   
                 elif switch == "B":
                     self.KButton2.config(bg='green')
                     self.QButton2.config(bg=self.orig_color)
                     self.WButton2.config(bg=self.orig_color) 
                     self.panel2.config(image=self.KImage) 
                     self.label2.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
-                    self.how2 = 2
+                 
             else:
                 currentState = "No Reciever Connected"
                 if switch == "A":
@@ -221,49 +221,46 @@ class loadGUI:
                     self.QButton.config(bg=self.orig_color)
                     self.KButton.config(bg=self.orig_color) 
                     self.panel.config(image=self.unselectedImage) 
-                    self.how = 2
+                   
                     self.label.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
                 elif switch == "B":
                     self.WButton2.config(bg=self.orig_color)
                     self.QButton2.config(bg=self.orig_color)
                     self.KButton2.config(bg=self.orig_color) 
                     self.panel2.config(image=self.unselectedImage) 
-                    self.how2 = 2
+                   
                     self.label2.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
             return currentState
-        except:
-            print ("Error, no response from device; check IP address, connections, and that device is on.")
+        except (OSError, AttributeError):
+            wasOnline = self.onlineA if switch == "A" else self.onlineB
+
+            if wasOnline:
+                print ("Error, no response from device; check IP address, connections, and that device is on.")
             if switch == "A":
                 self.label.config(text=f"No response from device; check IP address and connections.", font=('Arial',18)) 
                 self.panel.config(image=self.noImage) 
                 self.WButton.config(bg=self.orig_color)
                 self.QButton.config(bg=self.orig_color)
                 self.KButton.config(bg=self.orig_color) 
+                self.onlineA = False
             if switch == "B":
                 self.label2.config(text=f"No response from device; check IP address and connections.", font=('Arial',18)) 
                 self.panel2.config(image=self.noImage) 
                 self.WButton2.config(bg=self.orig_color)
                 self.QButton2.config(bg=self.orig_color)
                 self.KButton2.config(bg=self.orig_color)
+                self.onlineB = False
             currentState = "No Response"
+            if wasOnline and self.root.winfo_exists():
+                self.invalidCommand(cmd,2)
             
-
     def invalidCommand(self, CmdToSend, type):
+        if not self.root.winfo_exists():
+            return
         if type == 1:
             messagebox.showinfo(title="Error",message=f"Command not found: {CmdToSend}")
         if type == 2:
-            if self.how ==2 and self.how2 == 2:
-                self.panel.config(image=self.noImage) 
-                self.WButton.config(bg=self.orig_color)
-                self.QButton.config(bg=self.orig_color)
-                self.KButton.config(bg=self.orig_color) 
-                self.panel2.config(image=self.noImage) 
-                self.WButton2.config(bg=self.orig_color)
-                self.QButton2.config(bg=self.orig_color)
-                self.KButton2.config(bg=self.orig_color) 
-                messagebox.showinfo(title="Error",message=f"Error, no response from device; check IP address and connections.")
-                self.how = 1
-                self.how2 = 1
+            messagebox.showinfo(title="Error",message=f"Error, no response from device; check IP address and connections.")
 
     def Get_HTTP_command(self, CmdToSend):
     #ip address of the switch
@@ -273,16 +270,13 @@ class loadGUI:
         try:
             HTTP_Result = urlopen(CmdToSend, timeout=5)
             PTE_Return = HTTP_Result.read()
-
-            if len(PTE_Return) > 100:
-                self.invalidCommand(CmdToSend, 1)
-                PTE_Return = b"Invalid Command!"
-        except:
-            self.label.config(text=f"No response from device; check IP address and connections.", font=('Arial',18)) 
-            currentState = "No Response"
-            self.invalidCommand(CmdToSend, 2)
-            PTE_Return = b"No Response!"
-            
+        except OSError:
+            return None
+        
+        if len(PTE_Return) > 100:
+            if self.root.winfo_exists():
+                self.invalidCommand(CmdToSend,1)
+            return None
 
         return PTE_Return
 
@@ -360,62 +354,5 @@ class loadGUI:
             self.label2.config(text=f"Current Reciever: {currentState}", font=('Arial',18))
 
 
-def Get_HTTP_command(CmdToSend):
-
-    # Specify the IP address of the switch box
-    CmdToSend = "http://172.30.14.12/:" + CmdToSend
-
-    # Send the HTTP command and try to read the result
-    try:
-        HTTP_Result = urlopen(CmdToSend, timeout=1)
-        PTE_Return = HTTP_Result.read()
-
-        # The switch displays a web GUI for unrecognised commands
-        if len(PTE_Return) > 100:
-            print ("Error, command not found:", CmdToSend)
-            PTE_Return = "Invalid Command!"
-
-    # Catch an exception if URL is incorrect (incorrect IP or disconnected)
-    except:
-        print ("Error, no response from device; check IP address and connections.")
-        PTE_Return = "No Response!"
-        
-
-    # Return the response
-    return PTE_Return
-
-def getInput():
-
-    while waiting4Input:
-        print("Select Switch (A/B)")
-        switch = input().upper()
-        if switch != "A" and switch  != "B":
-            print("Invalid input. Valid inputs: 'A' or 'B'")
-        else:
-            print("Select Reciever (W/Q/K/Disconnect): ")
-            cmd = input().upper()
-            if cmd == 'W':
-                send = "SP4T"+switch+":STATE:1"
-                Get_HTTP_command(send)
-
-            elif cmd == 'Q':
-                send = "SP4T"+switch+":STATE:2"
-                Get_HTTP_command(send)
-
-            elif cmd == 'K':
-                send = "SP4T"+switch+":STATE:3"
-                Get_HTTP_command(send)
-
-            elif cmd == 'DISCONNECT':
-                send = "SP4T"+switch+":STATE:0"
-                Get_HTTP_command(send)
-
-            else:
-                print("Invalid input. Valid inputs: 'W','Q','K','D','disconnect',")
-
-waiting4Input = True
-cmd = ''
-print(cmd)
-threading.Thread(target=getInput).start()
 
 loadGUI()
